@@ -1,10 +1,28 @@
-
--- infernal hub free
+-- Infernal Hub Free - Real Football Hitbox Extender + Roblox Notification!
+-- 100% Universal: Football, Soccer, Kick, Touch, Custom Hitbox, Real visual/topbar notification
+-- Direct link compatible for ALL executors
 
 if not game:IsLoaded() then game.Loaded:Wait() end
 local plr = game.Players.LocalPlayer
 
--- UI animation/helper
+-- Real Roblox TopBar Notification (just like friend requests)
+local function roblox_notify(title, text, duration)
+    local StarterGui = game:GetService("StarterGui")
+    pcall(function()
+        StarterGui:SetCore("SendNotification", {
+            Title = title or "Notice";
+            Text = text or "";
+            Duration = duration or 3;
+        })
+    end)
+end
+
+roblox_notify("Infernal Hub", "Infernal Hub loading...", 4)
+
+-- Delayed actual load for effect
+task.wait(2.5)
+
+-- UI + animated helper
 local TweenService = game:GetService("TweenService")
 local function anim(instance, prop, target, time, easing)
     local tween = TweenService:Create(instance, TweenInfo.new(time or 0.22, easing or Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {[prop]=target})
@@ -24,14 +42,11 @@ bg.Position = UDim2.new(0.5,-240,0.5,-170)
 bg.Active = true
 bg.Draggable = true
 bg.BorderSizePixel = 0
-bg.AnchorPoint = Vector2.new(0,0)
-bg.ClipsDescendants = true
-
 local corner = Instance.new("UICorner", bg)
 corner.CornerRadius = UDim.new(0,14)
 
 local title = Instance.new("TextLabel", bg)
-title.Text = "Infernal Hub Free"
+title.Text = "Infernal Hub Free - Football Hitbox"
 title.Font = Enum.Font.GothamBold
 title.TextSize = 28
 title.BackgroundTransparency = 1
@@ -46,7 +61,6 @@ local tabBar = Instance.new("Frame", bg)
 tabBar.BackgroundTransparency = 1
 tabBar.Position = UDim2.new(0,26,0,64)
 tabBar.Size = UDim2.new(0,419,0,36)
-
 local selector = Instance.new("Frame", tabBar)
 selector.Size = UDim2.new(0,118,0,7)
 selector.Position = UDim2.new(0,0,0,30)
@@ -145,7 +159,6 @@ local function createSlider(parent, text, min, max, def, decimal)
 
     local dragging = false
     local UIS = game:GetService("UserInputService")
-    
     thumb.InputBegan:Connect(function(io)
         if io.UserInputType == Enum.UserInputType.MouseButton1 then
             dragging = true
@@ -176,15 +189,40 @@ local function createSlider(parent, text, min, max, def, decimal)
             valLabel.Text = tostring(val)
         end
     end)
-    function frame:get()
-        return val
-    end
+    function frame:get() return val end
     return frame
 end
 
-local reachSlider = createSlider(tabFrames[1], "Hitbox Size", 2, 20, 4, false)
+local reachSlider = createSlider(tabFrames[1], "Hitbox Size (studs)", 2, 20, 4, false)
 local transpSlider = createSlider(tabFrames[1], "Hitbox Transparency", 0, 1, 0.4, true)
 
+-- UNIVERSAL SOCCER/FOOTBALL HITBOX NAMES (edit for new games)
+local football_names = {"hitbox","kick","foot","leg","touch","reach","balltouch","soccer","box","collision"}
+
+-- Recursive expander: Target every hitbox part in your character and child models/folders
+local function expand_all_hitboxes(char, size, transparency)
+    for _,desc in ipairs(char:GetDescendants()) do
+        if desc:IsA("BasePart") then
+            for _,name in ipairs(football_names) do
+                if desc.Name:lower():find(name) then
+                    desc.Size = Vector3.new(size,size,size)
+                    desc.Transparency = transparency
+                    desc.CanCollide = false
+                    desc.Massless = true
+                end
+            end
+        end
+    end
+    -- Always update HumanoidRootPart for classic scripts
+    if char:FindFirstChild("HumanoidRootPart") then
+        char.HumanoidRootPart.Size = Vector3.new(size,size,size)
+        char.HumanoidRootPart.Transparency = transparency
+        char.HumanoidRootPart.CanCollide = false
+        char.HumanoidRootPart.Massless = true
+    end
+end
+
+-- Permanent visible hitbox part attached to you for feedback
 local hitboxVisual = Instance.new("Part")
 hitboxVisual.Name = "InfernalHitbox"
 hitboxVisual.Anchored = false
@@ -211,26 +249,27 @@ local function attachHitbox()
             weld.Parent = hitboxVisual
         end
         hitboxVisual.Position = plr.Character.HumanoidRootPart.Position
-        return true
     end
-    return false
 end
 
 plr.CharacterAdded:Connect(function()
-    for _,c in pairs(workspace:GetChildren()) do if c:IsA("Part") and c.Name == "InfernalHitbox" then c:Destroy() end end
+    for _,c in ipairs(workspace:GetChildren()) do if c:IsA("Part") and c.Name == "InfernalHitbox" then c:Destroy() end end
     wait(1)
     attachHitbox()
 end)
 attachHitbox()
 
 local function updateVisual()
-    if plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
-        hitboxVisual.Size = Vector3.new(reachSlider:get(), reachSlider:get(), reachSlider:get())
-        hitboxVisual.Transparency = transpSlider:get()
-        local t = 1-transpSlider:get()
-        local newColor = Color3.fromRGB(255,20+(200*t),75+(160*t))
-        anim(hitboxVisual,"Color",newColor, 0.13)
-        hitboxVisual.Position = plr.Character.HumanoidRootPart.Position
+    if plr.Character then
+        expand_all_hitboxes(plr.Character, reachSlider:get(), transpSlider:get())
+        if plr.Character:FindFirstChild("HumanoidRootPart") then
+            hitboxVisual.Size = Vector3.new(reachSlider:get(), reachSlider:get(), reachSlider:get())
+            hitboxVisual.Transparency = transpSlider:get()
+            local t = 1-transpSlider:get()
+            local newColor = Color3.fromRGB(255,20+(200*t),75+(160*t))
+            anim(hitboxVisual,"Color",newColor, 0.13)
+            hitboxVisual.Position = plr.Character.HumanoidRootPart.Position
+        end
     end
 end
 
@@ -240,4 +279,6 @@ plr.OnTeleport:Connect(function()
     if hitboxVisual then hitboxVisual:Destroy() end
 end)
 
-print("[Infernal Hub Free - GitHub RAW URL Injectable, Animated UI, Hitbox!]")
+roblox_notify("Infernal Hub", "Infernal Hub loaded! Enjoy!", 3)
+
+print("[Infernal Hub Free - Universal Football Hitbox Loaded. Notification shown!]")
