@@ -75,14 +75,11 @@ end
 function ReachModule:Stop()
     if self.connection then self.connection:Disconnect() self.connection = nil end
 end
-
 function ReachModule:SetDistance(dist) self.distance = dist end
-
 function ReachModule:Toggle(state)
     self.enabled = state
     if state and not self.connection then self:Start() end
 end
-
 ReachModule:Start()
 
 -- =====================
@@ -157,8 +154,7 @@ local function startSpeed()
         local hum = char and char:FindFirstChildOfClass("Humanoid")
         if not root or not hum or hum.MoveDirection.Magnitude == 0 then return end
         local extraSpeed = hum.WalkSpeed * (speedMultiplier - 1)
-        local offset = hum.MoveDirection.Unit * extraSpeed * dt
-        root.CFrame = root.CFrame + offset
+        root.CFrame = root.CFrame + hum.MoveDirection.Unit * extraSpeed * dt
     end)
 end
 
@@ -167,50 +163,53 @@ local function stopSpeed()
 end
 
 -- =====================
--- SPAWN BALL (:pb in chat)
+-- SPAWN BALL
 -- =====================
-local spawnBallKeybind = nil  -- nil = no keybind set
-local bindingKeybind = false  -- true when listening for next key press
+local spawnBallKeybind = nil
+local bindingKeybind = false
 
 local function spawnBall()
-    local VCS = game:GetService("VirtualChatService") or nil
-    -- Use the chat bar to type :pb
     pcall(function()
-        local StarterGui = game:GetService("StarterGui")
-        -- Method: fire the TextChatService / legacy chat
         local TextChatService = game:GetService("TextChatService")
         if TextChatService and TextChatService.ChatVersion == Enum.ChatVersion.TextChatService then
-            -- New chat system
-            local channel = TextChatService:FindFirstChild("TextChannels")
-            if channel then
-                local rbxGeneral = channel:FindFirstChild("RBXGeneral")
-                if rbxGeneral then
-                    rbxGeneral:SendAsync(":pb")
-                end
+            local channels = TextChatService:FindFirstChild("TextChannels")
+            if channels then
+                local general = channels:FindFirstChild("RBXGeneral")
+                if general then general:SendAsync(":pb") end
             end
         else
-            -- Legacy chat
-            game:GetService("ReplicatedStorage"):FindFirstChild("DefaultChatSystemChatEvents")
-                and game:GetService("ReplicatedStorage").DefaultChatSystemChatEvents
-                :FindFirstChild("SayMessageRequest")
-                :FireServer(":pb", "All")
+            local rs = game:GetService("ReplicatedStorage")
+            local events = rs:FindFirstChild("DefaultChatSystemChatEvents")
+            if events then
+                local say = events:FindFirstChild("SayMessageRequest")
+                if say then say:FireServer(":pb", "All") end
+            end
         end
     end)
 end
 
 -- =====================
--- UI THEME
+-- THEME
 -- =====================
-local ACCENT     = Color3.fromRGB(65, 115, 255)
-local BG         = Color3.fromRGB(18, 18, 20)
-local PANEL      = Color3.fromRGB(24, 24, 27)
-local SIDEBAR    = Color3.fromRGB(20, 20, 23)
-local ROW        = Color3.fromRGB(30, 30, 34)
-local ROW_HOVER  = Color3.fromRGB(36, 36, 42)
-local DIVIDER    = Color3.fromRGB(42, 42, 48)
-local TXT_MAIN   = Color3.fromRGB(220, 220, 225)
-local TXT_DIM    = Color3.fromRGB(105, 105, 115)
-local TXT_ACCENT = Color3.fromRGB(130, 160, 255)
+-- Window background layers
+local C_WIN        = Color3.fromRGB(20, 20, 23)       -- outer window
+local C_SIDEBAR    = Color3.fromRGB(16, 16, 19)       -- sidebar (darker than window)
+local C_CONTENT    = Color3.fromRGB(24, 24, 28)       -- content area (lighter)
+local C_ROW        = Color3.fromRGB(30, 30, 35)       -- widget row bg
+local C_ROW_HOVER  = Color3.fromRGB(38, 38, 45)       -- widget row hover
+local C_DIVIDER    = Color3.fromRGB(40, 40, 46)       -- dividers/strokes
+
+-- Tab states - must contrast against C_SIDEBAR
+local C_TAB_OFF    = Color3.fromRGB(16, 16, 19)       -- same as sidebar = blends = text only visible
+local C_TAB_ON     = Color3.fromRGB(30, 30, 36)       -- noticeably lighter card
+local C_TAB_HOVER  = Color3.fromRGB(24, 24, 29)
+
+-- Text
+local C_TXT        = Color3.fromRGB(215, 215, 220)
+local C_TXT_DIM    = Color3.fromRGB(110, 110, 122)
+local C_TXT_MUTED  = Color3.fromRGB(72, 72, 82)
+local C_ACCENT     = Color3.fromRGB(70, 120, 255)
+local C_ACCENT_TXT = Color3.fromRGB(140, 170, 255)
 
 -- =====================
 -- SCREEN GUI
@@ -222,151 +221,119 @@ ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 ScreenGui.IgnoreGuiInset = true
 ScreenGui.Parent = (gethui and gethui()) or LocalPlayer.PlayerGui
 
--- Right Shift toggle
 UserInputService.InputBegan:Connect(function(input, gpe)
     if gpe then return end
-    if input.UserInputType == Enum.UserInputType.Keyboard then
-        -- keybind for spawn ball
-        if spawnBallKeybind and input.KeyCode == spawnBallKeybind and not bindingKeybind then
-            spawnBall()
-        end
-        -- right shift
-        if input.KeyCode == Enum.KeyCode.RightShift and not bindingKeybind then
-            local w = ScreenGui:FindFirstChild("Window")
-            if w then w.Visible = not w.Visible end
-        end
+    if input.UserInputType ~= Enum.UserInputType.Keyboard then return end
+    if input.KeyCode == Enum.KeyCode.RightShift and not bindingKeybind then
+        local w = ScreenGui:FindFirstChild("Window")
+        if w then w.Visible = not w.Visible end
+    end
+    if spawnBallKeybind and input.KeyCode == spawnBallKeybind and not bindingKeybind then
+        spawnBall()
     end
 end)
 
+-- =====================
 -- WINDOW
+-- =====================
 local Window = Instance.new("Frame")
 Window.Name = "Window"
 Window.Size = UDim2.new(0, 530, 0, 380)
 Window.Position = UDim2.new(0.5, -265, 0.5, -190)
-Window.BackgroundColor3 = BG
+Window.BackgroundColor3 = C_WIN
 Window.BorderSizePixel = 0
 Window.ClipsDescendants = true
 Window.Parent = ScreenGui
+Instance.new("UICorner", Window).CornerRadius = UDim.new(0, 10)
+local ws = Instance.new("UIStroke", Window); ws.Color = C_DIVIDER; ws.Thickness = 1
 
-local WinCorner = Instance.new("UICorner"); WinCorner.CornerRadius = UDim.new(0, 10); WinCorner.Parent = Window
-local WinStroke = Instance.new("UIStroke"); WinStroke.Color = DIVIDER; WinStroke.Thickness = 1; WinStroke.Parent = Window
-
--- =====================
 -- TITLE BAR
--- =====================
 local TitleBar = Instance.new("Frame")
 TitleBar.Size = UDim2.new(1, 0, 0, 40)
-TitleBar.BackgroundColor3 = SIDEBAR
+TitleBar.BackgroundColor3 = C_SIDEBAR
 TitleBar.BorderSizePixel = 0
 TitleBar.ZIndex = 5
 TitleBar.Parent = Window
+local tdiv = Instance.new("Frame", TitleBar)
+tdiv.Size = UDim2.new(1,0,0,1); tdiv.Position = UDim2.new(0,0,1,-1)
+tdiv.BackgroundColor3 = C_DIVIDER; tdiv.BorderSizePixel = 0
 
-local TitleDiv = Instance.new("Frame")
-TitleDiv.Size = UDim2.new(1, 0, 0, 1)
-TitleDiv.Position = UDim2.new(0, 0, 1, -1)
-TitleDiv.BackgroundColor3 = DIVIDER
-TitleDiv.BorderSizePixel = 0
-TitleDiv.Parent = TitleBar
+local TitleLabel = Instance.new("TextLabel", TitleBar)
+TitleLabel.Size = UDim2.new(0,80,1,0); TitleLabel.Position = UDim2.new(0,16,0,0)
+TitleLabel.BackgroundTransparency = 1; TitleLabel.Text = "HUB"
+TitleLabel.TextColor3 = C_TXT; TitleLabel.TextSize = 14
+TitleLabel.Font = Enum.Font.GothamBold; TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
 
-local TitleLabel = Instance.new("TextLabel")
-TitleLabel.Size = UDim2.new(0, 100, 1, 0)
-TitleLabel.Position = UDim2.new(0, 16, 0, 0)
-TitleLabel.BackgroundTransparency = 1
-TitleLabel.Text = "HUB"
-TitleLabel.TextColor3 = TXT_MAIN
-TitleLabel.TextSize = 14
-TitleLabel.Font = Enum.Font.GothamBold
-TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
-TitleLabel.Parent = TitleBar
+local HintLbl = Instance.new("TextLabel", TitleBar)
+HintLbl.Size = UDim2.new(0,150,1,0); HintLbl.Position = UDim2.new(1,-218,0,0)
+HintLbl.BackgroundTransparency = 1; HintLbl.Text = "RShift  hide / show"
+HintLbl.TextColor3 = C_TXT_MUTED; HintLbl.TextSize = 10
+HintLbl.Font = Enum.Font.Gotham; HintLbl.TextXAlignment = Enum.TextXAlignment.Right
 
-local HintLabel = Instance.new("TextLabel")
-HintLabel.Size = UDim2.new(0, 130, 1, 0)
-HintLabel.Position = UDim2.new(1, -200, 0, 0)
-HintLabel.BackgroundTransparency = 1
-HintLabel.Text = "RShift  hide/show"
-HintLabel.TextColor3 = TXT_DIM
-HintLabel.TextSize = 10
-HintLabel.Font = Enum.Font.Gotham
-HintLabel.TextXAlignment = Enum.TextXAlignment.Right
-HintLabel.Parent = TitleBar
-
-local function makeTitleBtn(offsetX, col)
-    local b = Instance.new("TextButton")
-    b.Size = UDim2.new(0, 11, 0, 11)
-    b.Position = UDim2.new(1, offsetX, 0.5, -5)
-    b.BackgroundColor3 = col
-    b.Text = ""; b.BorderSizePixel = 0; b.ZIndex = 6
-    b.Parent = TitleBar
-    local c = Instance.new("UICorner"); c.CornerRadius = UDim.new(1,0); c.Parent = b
+local function makeDot(ox, col)
+    local b = Instance.new("TextButton", TitleBar)
+    b.Size = UDim2.new(0,11,0,11); b.Position = UDim2.new(1,ox,0.5,-5)
+    b.BackgroundColor3 = col; b.Text = ""; b.BorderSizePixel = 0; b.ZIndex = 6
+    Instance.new("UICorner", b).CornerRadius = UDim.new(1,0)
     return b
 end
-
-local CloseBtn = makeTitleBtn(-20, Color3.fromRGB(75, 75, 83))
-makeTitleBtn(-38, Color3.fromRGB(75, 75, 83))
-makeTitleBtn(-56, Color3.fromRGB(75, 75, 83))
-
-CloseBtn.MouseEnter:Connect(function() CloseBtn.BackgroundColor3 = Color3.fromRGB(255, 65, 65) end)
-CloseBtn.MouseLeave:Connect(function() CloseBtn.BackgroundColor3 = Color3.fromRGB(75, 75, 83) end)
+local CloseBtn = makeDot(-20, Color3.fromRGB(72,72,80))
+makeDot(-38, Color3.fromRGB(72,72,80)); makeDot(-56, Color3.fromRGB(72,72,80))
+CloseBtn.MouseEnter:Connect(function() CloseBtn.BackgroundColor3 = Color3.fromRGB(255,60,60) end)
+CloseBtn.MouseLeave:Connect(function() CloseBtn.BackgroundColor3 = Color3.fromRGB(72,72,80) end)
 CloseBtn.MouseButton1Click:Connect(function() Window.Visible = false end)
 
--- Drag
 local dragging, dragStart, startPos = false, nil, nil
 TitleBar.InputBegan:Connect(function(i)
-    if i.UserInputType == Enum.UserInputType.MouseButton1 then dragging = true; dragStart = i.Position; startPos = Window.Position end
+    if i.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging=true; dragStart=i.Position; startPos=Window.Position
+    end
 end)
 TitleBar.InputEnded:Connect(function(i)
-    if i.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end
+    if i.UserInputType == Enum.UserInputType.MouseButton1 then dragging=false end
 end)
 UserInputService.InputChanged:Connect(function(i)
     if dragging and i.UserInputType == Enum.UserInputType.MouseMovement then
         local d = i.Position - dragStart
-        Window.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + d.X, startPos.Y.Scale, startPos.Y.Offset + d.Y)
+        Window.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset+d.X, startPos.Y.Scale, startPos.Y.Offset+d.Y)
     end
 end)
 
 -- =====================
--- BODY
+-- BODY (sidebar + content side by side)
 -- =====================
-local Body = Instance.new("Frame")
-Body.Size = UDim2.new(1, 0, 1, -40)
-Body.Position = UDim2.new(0, 0, 0, 40)
-Body.BackgroundTransparency = 1
-Body.BorderSizePixel = 0
-Body.Parent = Window
+local Body = Instance.new("Frame", Window)
+Body.Size = UDim2.new(1,0,1,-40); Body.Position = UDim2.new(0,0,0,40)
+Body.BackgroundTransparency = 1; Body.BorderSizePixel = 0
 
--- SIDEBAR
-local Sidebar = Instance.new("Frame")
-Sidebar.Size = UDim2.new(0, 150, 1, 0)
-Sidebar.BackgroundColor3 = SIDEBAR
+-- SIDEBAR FRAME
+local Sidebar = Instance.new("Frame", Body)
+Sidebar.Size = UDim2.new(0, 148, 1, 0)
+Sidebar.BackgroundColor3 = C_SIDEBAR
 Sidebar.BorderSizePixel = 0
-Sidebar.Parent = Body
 
-local SideDiv = Instance.new("Frame")
-SideDiv.Size = UDim2.new(0, 1, 1, 0)
-SideDiv.Position = UDim2.new(1, -1, 0, 0)
-SideDiv.BackgroundColor3 = DIVIDER
-SideDiv.BorderSizePixel = 0
-SideDiv.Parent = Sidebar
+-- sidebar right edge divider
+local sdiv = Instance.new("Frame", Sidebar)
+sdiv.Size = UDim2.new(0,1,1,0); sdiv.Position = UDim2.new(1,-1,0,0)
+sdiv.BackgroundColor3 = C_DIVIDER; sdiv.BorderSizePixel = 0
 
-local SideLayout = Instance.new("UIListLayout")
+-- layout inside sidebar - NO padding on left/right so buttons fill full width
+local SideLayout = Instance.new("UIListLayout", Sidebar)
 SideLayout.SortOrder = Enum.SortOrder.LayoutOrder
-SideLayout.Padding = UDim.new(0, 3)
-SideLayout.Parent = Sidebar
+SideLayout.Padding = UDim.new(0, 2)
 
-local SidePad = Instance.new("UIPadding")
-SidePad.PaddingTop = UDim.new(0, 10)
-SidePad.PaddingLeft = UDim.new(0, 8)
-SidePad.PaddingRight = UDim.new(0, 8)
-SidePad.Parent = Sidebar
+local SidePadding = Instance.new("UIPadding", Sidebar)
+SidePadding.PaddingTop = UDim.new(0, 8)
+SidePadding.PaddingBottom = UDim.new(0, 8)
+-- NO left/right padding here - handled per-button with text padding
 
--- CONTENT AREA
-local Content = Instance.new("Frame")
-Content.Size = UDim2.new(1, -150, 1, 0)
-Content.Position = UDim2.new(0, 150, 0, 0)
-Content.BackgroundColor3 = PANEL
+-- CONTENT FRAME
+local Content = Instance.new("Frame", Body)
+Content.Size = UDim2.new(1, -148, 1, 0)
+Content.Position = UDim2.new(0, 148, 0, 0)
+Content.BackgroundColor3 = C_CONTENT
 Content.BorderSizePixel = 0
 Content.ClipsDescendants = true
-Content.Parent = Body
 
 -- =====================
 -- PAGE SYSTEM
@@ -378,13 +345,13 @@ local currentPage = nil
 local function setPage(name)
     currentPage = name
     for n, btn in pairs(navBtns) do
-        local active = (n == name)
-        TweenService:Create(btn, TweenInfo.new(0.12), {
-            BackgroundColor3 = active and ROW or SIDEBAR,
-            TextColor3 = active and TXT_MAIN or TXT_DIM
+        local on = (n == name)
+        TweenService:Create(btn, TweenInfo.new(0.13), {
+            BackgroundColor3 = on and C_TAB_ON or C_TAB_OFF
         }):Play()
-        local bar = btn:FindFirstChild("AccentBar")
-        if bar then bar.Visible = active end
+        btn.TextColor3 = on and C_TXT or C_TXT_DIM
+        local bar = btn:FindFirstChild("_bar")
+        if bar then bar.Visible = on end
     end
     for n, pg in pairs(pgFrames) do
         pg.Visible = (n == name)
@@ -392,295 +359,236 @@ local function setPage(name)
 end
 
 local function addPage(name, order)
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(1, 0, 0, 36)
-    btn.BackgroundColor3 = SIDEBAR
+    -- NAV BUTTON
+    -- Full width, text left-padded, background slightly different from sidebar when active
+    local btn = Instance.new("TextButton", Sidebar)
+    btn.Name = "NavBtn_"..name
+    btn.Size = UDim2.new(1, -16, 0, 36)    -- 8px margin each side via position
+    btn.Position = UDim2.new(0, 8, 0, 0)
+    btn.BackgroundColor3 = C_TAB_OFF
     btn.BorderSizePixel = 0
+    btn.AutoButtonColor = false
     btn.Text = name
-    btn.TextColor3 = TXT_DIM
+    btn.TextColor3 = C_TXT_DIM
     btn.TextSize = 13
     btn.Font = Enum.Font.Gotham
     btn.TextXAlignment = Enum.TextXAlignment.Left
     btn.LayoutOrder = order
     btn.ClipsDescendants = true
-    btn.Parent = Sidebar
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
+    local bp = Instance.new("UIPadding", btn); bp.PaddingLeft = UDim.new(0, 14)
 
-    local bc = Instance.new("UICorner"); bc.CornerRadius = UDim.new(0, 6); bc.Parent = btn
-    local bp = Instance.new("UIPadding"); bp.PaddingLeft = UDim.new(0, 14); bp.Parent = btn
-
-    local bar = Instance.new("Frame")
-    bar.Name = "AccentBar"
-    bar.Size = UDim2.new(0, 3, 0.55, 0)
-    bar.Position = UDim2.new(0, 0, 0.225, 0)
-    bar.BackgroundColor3 = ACCENT
+    -- accent bar on left edge
+    local bar = Instance.new("Frame", btn)
+    bar.Name = "_bar"
+    bar.Size = UDim2.new(0, 3, 0.5, 0)
+    bar.Position = UDim2.new(0, 0, 0.25, 0)
+    bar.BackgroundColor3 = C_ACCENT
     bar.BorderSizePixel = 0
     bar.Visible = false
-    bar.Parent = btn
-    local barc = Instance.new("UICorner"); barc.CornerRadius = UDim.new(0, 2); barc.Parent = bar
+    Instance.new("UICorner", bar).CornerRadius = UDim.new(0, 2)
 
     navBtns[name] = btn
 
-    local pg = Instance.new("ScrollingFrame")
+    btn.MouseButton1Click:Connect(function() setPage(name) end)
+    btn.MouseEnter:Connect(function()
+        if currentPage ~= name then
+            TweenService:Create(btn, TweenInfo.new(0.1), {BackgroundColor3 = C_TAB_HOVER}):Play()
+            btn.TextColor3 = Color3.fromRGB(170, 170, 180)
+        end
+    end)
+    btn.MouseLeave:Connect(function()
+        if currentPage ~= name then
+            TweenService:Create(btn, TweenInfo.new(0.1), {BackgroundColor3 = C_TAB_OFF}):Play()
+            btn.TextColor3 = C_TXT_DIM
+        end
+    end)
+
+    -- PAGE SCROLL FRAME
+    local pg = Instance.new("ScrollingFrame", Content)
     pg.Size = UDim2.new(1, 0, 1, 0)
     pg.BackgroundTransparency = 1
     pg.BorderSizePixel = 0
     pg.ScrollBarThickness = 2
-    pg.ScrollBarImageColor3 = Color3.fromRGB(65, 65, 75)
+    pg.ScrollBarImageColor3 = Color3.fromRGB(60, 60, 70)
     pg.CanvasSize = UDim2.new(0, 0, 0, 0)
     pg.AutomaticCanvasSize = Enum.AutomaticSize.Y
     pg.Visible = false
-    pg.Parent = Content
 
-    local pl = Instance.new("UIListLayout"); pl.SortOrder = Enum.SortOrder.LayoutOrder; pl.Padding = UDim.new(0, 5); pl.Parent = pg
-    local pp = Instance.new("UIPadding"); pp.PaddingTop = UDim.new(0, 14); pp.PaddingLeft = UDim.new(0, 14); pp.PaddingRight = UDim.new(0, 14); pp.PaddingBottom = UDim.new(0, 14); pp.Parent = pg
+    local pl = Instance.new("UIListLayout", pg)
+    pl.SortOrder = Enum.SortOrder.LayoutOrder; pl.Padding = UDim.new(0, 5)
+
+    local pp = Instance.new("UIPadding", pg)
+    pp.PaddingTop = UDim.new(0,14); pp.PaddingLeft = UDim.new(0,14)
+    pp.PaddingRight = UDim.new(0,14); pp.PaddingBottom = UDim.new(0,14)
+
     pgFrames[name] = pg
-
-    btn.MouseButton1Click:Connect(function() setPage(name) end)
-    btn.MouseEnter:Connect(function() if currentPage ~= name then btn.TextColor3 = Color3.fromRGB(175, 175, 185) end end)
-    btn.MouseLeave:Connect(function() if currentPage ~= name then btn.TextColor3 = TXT_DIM end end)
-
     return pg
 end
 
 -- =====================
--- WIDGETS
+-- WIDGET HELPERS
 -- =====================
 local function addSection(page, text, order)
-    local wrap = Instance.new("Frame")
-    wrap.Size = UDim2.new(1, 0, 0, 26)
-    wrap.BackgroundTransparency = 1
-    wrap.BorderSizePixel = 0
-    wrap.LayoutOrder = order
-    wrap.Parent = page
-
-    local lbl = Instance.new("TextLabel")
-    lbl.Size = UDim2.new(1, 0, 0, 14)
-    lbl.Position = UDim2.new(0, 0, 0, 6)
-    lbl.BackgroundTransparency = 1
-    lbl.Text = text:upper()
-    lbl.TextColor3 = TXT_DIM
-    lbl.TextSize = 10
-    lbl.Font = Enum.Font.GothamMedium
-    lbl.TextXAlignment = Enum.TextXAlignment.Left
-    lbl.Parent = wrap
-
-    local line = Instance.new("Frame")
-    line.Size = UDim2.new(1, 0, 0, 1)
-    line.Position = UDim2.new(0, 0, 1, -1)
-    line.BackgroundColor3 = DIVIDER
-    line.BorderSizePixel = 0
-    line.Parent = wrap
+    local wrap = Instance.new("Frame", page)
+    wrap.Size = UDim2.new(1,0,0,28); wrap.BackgroundTransparency = 1
+    wrap.BorderSizePixel = 0; wrap.LayoutOrder = order
+    local lbl = Instance.new("TextLabel", wrap)
+    lbl.Size = UDim2.new(1,0,0,14); lbl.Position = UDim2.new(0,0,0,8)
+    lbl.BackgroundTransparency = 1; lbl.Text = text:upper()
+    lbl.TextColor3 = C_TXT_MUTED; lbl.TextSize = 10
+    lbl.Font = Enum.Font.GothamMedium; lbl.TextXAlignment = Enum.TextXAlignment.Left
+    local line = Instance.new("Frame", wrap)
+    line.Size = UDim2.new(1,0,0,1); line.Position = UDim2.new(0,0,1,-1)
+    line.BackgroundColor3 = C_DIVIDER; line.BorderSizePixel = 0
 end
 
 local function addToggle(page, label, order, callback)
-    local row = Instance.new("Frame")
-    row.Size = UDim2.new(1, 0, 0, 44)
-    row.BackgroundColor3 = ROW
-    row.BorderSizePixel = 0
-    row.LayoutOrder = order
-    row.Parent = page
-    local rc = Instance.new("UICorner"); rc.CornerRadius = UDim.new(0, 7); rc.Parent = row
+    local row = Instance.new("Frame", page)
+    row.Size = UDim2.new(1,0,0,44); row.BackgroundColor3 = C_ROW
+    row.BorderSizePixel = 0; row.LayoutOrder = order
+    Instance.new("UICorner", row).CornerRadius = UDim.new(0, 7)
 
-    local lbl = Instance.new("TextLabel")
-    lbl.Size = UDim2.new(1, -68, 1, 0)
-    lbl.Position = UDim2.new(0, 14, 0, 0)
-    lbl.BackgroundTransparency = 1
-    lbl.Text = label
-    lbl.TextColor3 = TXT_MAIN
-    lbl.TextSize = 13
-    lbl.Font = Enum.Font.Gotham
-    lbl.TextXAlignment = Enum.TextXAlignment.Left
-    lbl.Parent = row
+    local lbl = Instance.new("TextLabel", row)
+    lbl.Size = UDim2.new(1,-68,1,0); lbl.Position = UDim2.new(0,14,0,0)
+    lbl.BackgroundTransparency = 1; lbl.Text = label
+    lbl.TextColor3 = C_TXT; lbl.TextSize = 13
+    lbl.Font = Enum.Font.Gotham; lbl.TextXAlignment = Enum.TextXAlignment.Left
 
-    local track = Instance.new("Frame")
-    track.Size = UDim2.new(0, 42, 0, 22)
-    track.Position = UDim2.new(1, -56, 0.5, -11)
-    track.BackgroundColor3 = Color3.fromRGB(52, 52, 60)
-    track.BorderSizePixel = 0
-    track.Parent = row
-    local tc = Instance.new("UICorner"); tc.CornerRadius = UDim.new(1, 0); tc.Parent = track
+    local track = Instance.new("Frame", row)
+    track.Size = UDim2.new(0,42,0,22); track.Position = UDim2.new(1,-56,0.5,-11)
+    track.BackgroundColor3 = Color3.fromRGB(50,50,58); track.BorderSizePixel = 0
+    Instance.new("UICorner", track).CornerRadius = UDim.new(1,0)
 
-    local thumb = Instance.new("Frame")
-    thumb.Size = UDim2.new(0, 16, 0, 16)
-    thumb.Position = UDim2.new(0, 3, 0.5, -8)
-    thumb.BackgroundColor3 = Color3.fromRGB(145, 145, 155)
-    thumb.BorderSizePixel = 0
-    thumb.Parent = track
-    local thc = Instance.new("UICorner"); thc.CornerRadius = UDim.new(1, 0); thc.Parent = thumb
+    local thumb = Instance.new("Frame", track)
+    thumb.Size = UDim2.new(0,16,0,16); thumb.Position = UDim2.new(0,3,0.5,-8)
+    thumb.BackgroundColor3 = Color3.fromRGB(140,140,150); thumb.BorderSizePixel = 0
+    Instance.new("UICorner", thumb).CornerRadius = UDim.new(1,0)
 
     local state = false
-    local hitbox = Instance.new("TextButton")
-    hitbox.Size = UDim2.new(1, 0, 1, 0); hitbox.BackgroundTransparency = 1; hitbox.Text = ""; hitbox.BorderSizePixel = 0; hitbox.Parent = row
+    local hb = Instance.new("TextButton", row)
+    hb.Size = UDim2.new(1,0,1,0); hb.BackgroundTransparency = 1; hb.Text = ""; hb.BorderSizePixel = 0
 
-    local function setState(val)
-        state = val
+    local function setState(v)
+        state = v
         if state then
-            TweenService:Create(track, TweenInfo.new(0.15), {BackgroundColor3 = ACCENT}):Play()
-            TweenService:Create(thumb, TweenInfo.new(0.15), {Position = UDim2.new(0, 23, 0.5, -8), BackgroundColor3 = Color3.fromRGB(255, 255, 255)}):Play()
+            TweenService:Create(track, TweenInfo.new(0.15), {BackgroundColor3 = C_ACCENT}):Play()
+            TweenService:Create(thumb, TweenInfo.new(0.15), {Position=UDim2.new(0,23,0.5,-8), BackgroundColor3=Color3.fromRGB(255,255,255)}):Play()
         else
-            TweenService:Create(track, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(52, 52, 60)}):Play()
-            TweenService:Create(thumb, TweenInfo.new(0.15), {Position = UDim2.new(0, 3, 0.5, -8), BackgroundColor3 = Color3.fromRGB(145, 145, 155)}):Play()
+            TweenService:Create(track, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(50,50,58)}):Play()
+            TweenService:Create(thumb, TweenInfo.new(0.15), {Position=UDim2.new(0,3,0.5,-8), BackgroundColor3=Color3.fromRGB(140,140,150)}):Play()
         end
         if callback then callback(state) end
     end
-
-    hitbox.MouseButton1Click:Connect(function() setState(not state) end)
+    hb.MouseButton1Click:Connect(function() setState(not state) end)
     return setState
 end
 
 local function addSlider(page, label, minVal, maxVal, default, step, order, callback)
-    step = step or 1
-    local container = Instance.new("Frame")
-    container.Size = UDim2.new(1, 0, 0, 62)
-    container.BackgroundColor3 = ROW
-    container.BorderSizePixel = 0
-    container.LayoutOrder = order
-    container.Parent = page
-    local cc = Instance.new("UICorner"); cc.CornerRadius = UDim.new(0, 7); cc.Parent = container
+    local container = Instance.new("Frame", page)
+    container.Size = UDim2.new(1,0,0,62); container.BackgroundColor3 = C_ROW
+    container.BorderSizePixel = 0; container.LayoutOrder = order
+    Instance.new("UICorner", container).CornerRadius = UDim.new(0, 7)
 
-    local labelTxt = Instance.new("TextLabel")
-    labelTxt.Size = UDim2.new(0.6, 0, 0, 20)
-    labelTxt.Position = UDim2.new(0, 14, 0, 10)
-    labelTxt.BackgroundTransparency = 1
-    labelTxt.Text = label
-    labelTxt.TextColor3 = TXT_MAIN
-    labelTxt.TextSize = 13
-    labelTxt.Font = Enum.Font.Gotham
-    labelTxt.TextXAlignment = Enum.TextXAlignment.Left
-    labelTxt.Parent = container
+    local lbl = Instance.new("TextLabel", container)
+    lbl.Size = UDim2.new(0.6,0,0,20); lbl.Position = UDim2.new(0,14,0,10)
+    lbl.BackgroundTransparency = 1; lbl.Text = label
+    lbl.TextColor3 = C_TXT; lbl.TextSize = 13
+    lbl.Font = Enum.Font.Gotham; lbl.TextXAlignment = Enum.TextXAlignment.Left
 
-    local valBox = Instance.new("Frame")
-    valBox.Size = UDim2.new(0, 42, 0, 22)
-    valBox.Position = UDim2.new(1, -56, 0, 8)
-    valBox.BackgroundColor3 = Color3.fromRGB(38, 38, 44)
-    valBox.BorderSizePixel = 0
-    valBox.Parent = container
-    local vbc = Instance.new("UICorner"); vbc.CornerRadius = UDim.new(0, 5); vbc.Parent = valBox
+    local valBox = Instance.new("Frame", container)
+    valBox.Size = UDim2.new(0,44,0,22); valBox.Position = UDim2.new(1,-58,0,8)
+    valBox.BackgroundColor3 = Color3.fromRGB(36,36,42); valBox.BorderSizePixel = 0
+    Instance.new("UICorner", valBox).CornerRadius = UDim.new(0, 5)
 
-    local valTxt = Instance.new("TextLabel")
-    valTxt.Size = UDim2.new(1, 0, 1, 0)
-    valTxt.BackgroundTransparency = 1
-    valTxt.Text = tostring(default)
-    valTxt.TextColor3 = TXT_ACCENT
-    valTxt.TextSize = 12
-    valTxt.Font = Enum.Font.GothamMedium
-    valTxt.Parent = valBox
+    local valTxt = Instance.new("TextLabel", valBox)
+    valTxt.Size = UDim2.new(1,0,1,0); valTxt.BackgroundTransparency = 1
+    valTxt.TextColor3 = C_ACCENT_TXT; valTxt.TextSize = 12; valTxt.Font = Enum.Font.GothamMedium
+    valTxt.Text = (step < 1) and string.format("%.1f", default) or tostring(default)
 
-    local trackBg = Instance.new("Frame")
-    trackBg.Size = UDim2.new(1, -28, 0, 4)
-    trackBg.Position = UDim2.new(0, 14, 0, 44)
-    trackBg.BackgroundColor3 = Color3.fromRGB(46, 46, 52)
-    trackBg.BorderSizePixel = 0
-    trackBg.Parent = container
-    local tbgc = Instance.new("UICorner"); tbgc.CornerRadius = UDim.new(1, 0); tbgc.Parent = trackBg
+    local trackBg = Instance.new("Frame", container)
+    trackBg.Size = UDim2.new(1,-28,0,4); trackBg.Position = UDim2.new(0,14,0,44)
+    trackBg.BackgroundColor3 = Color3.fromRGB(44,44,50); trackBg.BorderSizePixel = 0
+    Instance.new("UICorner", trackBg).CornerRadius = UDim.new(1,0)
 
-    local fill = Instance.new("Frame")
-    fill.Size = UDim2.new((default - minVal) / (maxVal - minVal), 0, 1, 0)
-    fill.BackgroundColor3 = ACCENT
-    fill.BorderSizePixel = 0
-    fill.Parent = trackBg
-    local fc = Instance.new("UICorner"); fc.CornerRadius = UDim.new(1, 0); fc.Parent = fill
+    local fill = Instance.new("Frame", trackBg)
+    fill.Size = UDim2.new((default-minVal)/(maxVal-minVal),0,1,0)
+    fill.BackgroundColor3 = C_ACCENT; fill.BorderSizePixel = 0
+    Instance.new("UICorner", fill).CornerRadius = UDim.new(1,0)
 
-    local thumb = Instance.new("Frame")
-    thumb.Size = UDim2.new(0, 13, 0, 13)
-    thumb.Position = UDim2.new((default - minVal) / (maxVal - minVal), -6, 0.5, -6)
-    thumb.BackgroundColor3 = Color3.fromRGB(235, 235, 242)
-    thumb.BorderSizePixel = 0
-    thumb.Parent = trackBg
-    local thc = Instance.new("UICorner"); thc.CornerRadius = UDim.new(1, 0); thc.Parent = thumb
+    local thumb = Instance.new("Frame", trackBg)
+    thumb.Size = UDim2.new(0,13,0,13)
+    thumb.Position = UDim2.new((default-minVal)/(maxVal-minVal),-6,0.5,-6)
+    thumb.BackgroundColor3 = Color3.fromRGB(235,235,242); thumb.BorderSizePixel = 0
+    Instance.new("UICorner", thumb).CornerRadius = UDim.new(1,0)
 
     local value = default
     local sliding = false
 
-    local function updateSlider(inputX)
-        local rel = math.clamp((inputX - trackBg.AbsolutePosition.X) / trackBg.AbsoluteSize.X, 0, 1)
+    local function update(ix)
+        local rel = math.clamp((ix - trackBg.AbsolutePosition.X) / trackBg.AbsoluteSize.X, 0, 1)
         local raw = minVal + rel * (maxVal - minVal)
         value = math.floor(raw / step + 0.5) * step
         value = math.clamp(value, minVal, maxVal)
-        -- format: if step < 1, show decimals
-        local fmt = (step < 1) and string.format("%.1f", value) or tostring(math.floor(value))
-        valTxt.Text = fmt
-        local snappedRel = (value - minVal) / (maxVal - minVal)
-        fill.Size = UDim2.new(snappedRel, 0, 1, 0)
-        thumb.Position = UDim2.new(snappedRel, -6, 0.5, -6)
+        local srel = (value - minVal) / (maxVal - minVal)
+        valTxt.Text = (step < 1) and string.format("%.1f", value) or tostring(math.floor(value))
+        fill.Size = UDim2.new(srel,0,1,0)
+        thumb.Position = UDim2.new(srel,-6,0.5,-6)
         if callback then callback(value) end
     end
 
-    local hitbox = Instance.new("TextButton")
-    hitbox.Size = UDim2.new(1, -28, 0, 22)
-    hitbox.Position = UDim2.new(0, 14, 0, 36)
-    hitbox.BackgroundTransparency = 1; hitbox.Text = ""; hitbox.BorderSizePixel = 0
-    hitbox.Parent = container
+    local hb = Instance.new("TextButton", container)
+    hb.Size = UDim2.new(1,-28,0,24); hb.Position = UDim2.new(0,14,0,36)
+    hb.BackgroundTransparency = 1; hb.Text = ""; hb.BorderSizePixel = 0
 
-    hitbox.InputBegan:Connect(function(i)
-        if i.UserInputType == Enum.UserInputType.MouseButton1 then sliding = true; updateSlider(i.Position.X) end
+    hb.InputBegan:Connect(function(i)
+        if i.UserInputType == Enum.UserInputType.MouseButton1 then sliding=true; update(i.Position.X) end
     end)
-    hitbox.InputEnded:Connect(function(i)
-        if i.UserInputType == Enum.UserInputType.MouseButton1 then sliding = false end
+    hb.InputEnded:Connect(function(i)
+        if i.UserInputType == Enum.UserInputType.MouseButton1 then sliding=false end
     end)
     UserInputService.InputChanged:Connect(function(i)
-        if sliding and i.UserInputType == Enum.UserInputType.MouseMovement then updateSlider(i.Position.X) end
+        if sliding and i.UserInputType == Enum.UserInputType.MouseMovement then update(i.Position.X) end
     end)
 end
 
 local function addButton(page, label, order, callback)
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(1, 0, 0, 40)
-    btn.BackgroundColor3 = ROW
-    btn.BorderSizePixel = 0
-    btn.Text = label
-    btn.TextColor3 = TXT_MAIN
-    btn.TextSize = 13
-    btn.Font = Enum.Font.Gotham
-    btn.LayoutOrder = order
-    btn.Parent = page
-    local bc = Instance.new("UICorner"); bc.CornerRadius = UDim.new(0, 7); bc.Parent = btn
-    local stroke = Instance.new("UIStroke"); stroke.Color = DIVIDER; stroke.Thickness = 1; stroke.Parent = btn
-    btn.MouseEnter:Connect(function() TweenService:Create(btn, TweenInfo.new(0.1), {BackgroundColor3 = ROW_HOVER}):Play() end)
-    btn.MouseLeave:Connect(function() TweenService:Create(btn, TweenInfo.new(0.1), {BackgroundColor3 = ROW}):Play() end)
-    btn.MouseButton1Down:Connect(function() TweenService:Create(btn, TweenInfo.new(0.05), {BackgroundColor3 = Color3.fromRGB(50, 50, 58)}):Play() end)
-    btn.MouseButton1Up:Connect(function() TweenService:Create(btn, TweenInfo.new(0.1), {BackgroundColor3 = ROW_HOVER}):Play() end)
+    local btn = Instance.new("TextButton", page)
+    btn.Size = UDim2.new(1,0,0,40); btn.BackgroundColor3 = C_ROW
+    btn.BorderSizePixel = 0; btn.Text = label; btn.TextColor3 = C_TXT
+    btn.TextSize = 13; btn.Font = Enum.Font.Gotham; btn.LayoutOrder = order
+    btn.AutoButtonColor = false
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 7)
+    local s = Instance.new("UIStroke", btn); s.Color = C_DIVIDER; s.Thickness = 1
+    btn.MouseEnter:Connect(function() TweenService:Create(btn,TweenInfo.new(0.1),{BackgroundColor3=C_ROW_HOVER}):Play() end)
+    btn.MouseLeave:Connect(function() TweenService:Create(btn,TweenInfo.new(0.1),{BackgroundColor3=C_ROW}):Play() end)
+    btn.MouseButton1Down:Connect(function() TweenService:Create(btn,TweenInfo.new(0.05),{BackgroundColor3=Color3.fromRGB(48,48,56)}):Play() end)
+    btn.MouseButton1Up:Connect(function() TweenService:Create(btn,TweenInfo.new(0.1),{BackgroundColor3=C_ROW_HOVER}):Play() end)
     btn.MouseButton1Click:Connect(function() if callback then callback() end end)
     return btn
 end
 
 local function addXYZDisplay(page, order)
-    local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(1, 0, 0, 44)
-    frame.BackgroundColor3 = ROW
-    frame.BorderSizePixel = 0
-    frame.LayoutOrder = order
-    frame.Parent = page
-    local fc = Instance.new("UICorner"); fc.CornerRadius = UDim.new(0, 7); fc.Parent = frame
+    local frame = Instance.new("Frame", page)
+    frame.Size = UDim2.new(1,0,0,44); frame.BackgroundColor3 = C_ROW
+    frame.BorderSizePixel = 0; frame.LayoutOrder = order
+    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 7)
 
-    local title = Instance.new("TextLabel")
-    title.Size = UDim2.new(0, 36, 1, 0)
-    title.Position = UDim2.new(0, 14, 0, 0)
-    title.BackgroundTransparency = 1
-    title.Text = "POS"
-    title.TextColor3 = TXT_DIM
-    title.TextSize = 10
-    title.Font = Enum.Font.GothamMedium
-    title.TextXAlignment = Enum.TextXAlignment.Left
-    title.Parent = frame
+    local title = Instance.new("TextLabel", frame)
+    title.Size = UDim2.new(0,36,1,0); title.Position = UDim2.new(0,14,0,0)
+    title.BackgroundTransparency = 1; title.Text = "POS"
+    title.TextColor3 = C_TXT_DIM; title.TextSize = 10
+    title.Font = Enum.Font.GothamMedium; title.TextXAlignment = Enum.TextXAlignment.Left
 
-    local sep = Instance.new("Frame")
-    sep.Size = UDim2.new(0, 1, 0.5, 0)
-    sep.Position = UDim2.new(0, 50, 0.25, 0)
-    sep.BackgroundColor3 = DIVIDER
-    sep.BorderSizePixel = 0
-    sep.Parent = frame
+    local sep = Instance.new("Frame", frame)
+    sep.Size = UDim2.new(0,1,0.5,0); sep.Position = UDim2.new(0,50,0.25,0)
+    sep.BackgroundColor3 = C_DIVIDER; sep.BorderSizePixel = 0
 
-    local xyzLbl = Instance.new("TextLabel")
-    xyzLbl.Size = UDim2.new(1, -70, 1, 0)
-    xyzLbl.Position = UDim2.new(0, 58, 0, 0)
-    xyzLbl.BackgroundTransparency = 1
-    xyzLbl.Text = "0.0,  0.0,  0.0"
-    xyzLbl.TextColor3 = TXT_ACCENT
-    xyzLbl.TextSize = 12
-    xyzLbl.Font = Enum.Font.Code
-    xyzLbl.TextXAlignment = Enum.TextXAlignment.Left
-    xyzLbl.Parent = frame
+    local xyzLbl = Instance.new("TextLabel", frame)
+    xyzLbl.Size = UDim2.new(1,-68,1,0); xyzLbl.Position = UDim2.new(0,58,0,0)
+    xyzLbl.BackgroundTransparency = 1; xyzLbl.Text = "0.0,  0.0,  0.0"
+    xyzLbl.TextColor3 = C_ACCENT_TXT; xyzLbl.TextSize = 12
+    xyzLbl.Font = Enum.Font.Code; xyzLbl.TextXAlignment = Enum.TextXAlignment.Left
 
     RunService.Heartbeat:Connect(function()
         local char = LocalPlayer.Character
@@ -692,117 +600,80 @@ local function addXYZDisplay(page, order)
     end)
 end
 
--- Spawn ball widget with keybind setter
 local function addSpawnBallWidget(page, order)
-    -- Main spawn button
-    local spawnBtn = Instance.new("TextButton")
-    spawnBtn.Size = UDim2.new(1, 0, 0, 42)
-    spawnBtn.BackgroundColor3 = Color3.fromRGB(38, 55, 95)
-    spawnBtn.BorderSizePixel = 0
-    spawnBtn.Text = "Spawn Ball  ( :pb )"
-    spawnBtn.TextColor3 = Color3.fromRGB(160, 190, 255)
-    spawnBtn.TextSize = 13
-    spawnBtn.Font = Enum.Font.GothamMedium
-    spawnBtn.LayoutOrder = order
-    spawnBtn.Parent = page
-    local sbc = Instance.new("UICorner"); sbc.CornerRadius = UDim.new(0, 7); sbc.Parent = spawnBtn
-    local sbs = Instance.new("UIStroke"); sbs.Color = Color3.fromRGB(55, 80, 160); sbs.Thickness = 1; sbs.Parent = spawnBtn
-
-    spawnBtn.MouseEnter:Connect(function() TweenService:Create(spawnBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(48, 68, 118)}):Play() end)
-    spawnBtn.MouseLeave:Connect(function() TweenService:Create(spawnBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(38, 55, 95)}):Play() end)
+    local spawnBtn = Instance.new("TextButton", page)
+    spawnBtn.Size = UDim2.new(1,0,0,42); spawnBtn.BackgroundColor3 = Color3.fromRGB(28,45,90)
+    spawnBtn.BorderSizePixel = 0; spawnBtn.Text = "Spawn Ball  ( :pb )"
+    spawnBtn.TextColor3 = Color3.fromRGB(150,185,255); spawnBtn.TextSize = 13
+    spawnBtn.Font = Enum.Font.GothamMedium; spawnBtn.LayoutOrder = order
+    spawnBtn.AutoButtonColor = false
+    Instance.new("UICorner", spawnBtn).CornerRadius = UDim.new(0, 7)
+    local sbs = Instance.new("UIStroke", spawnBtn); sbs.Color = Color3.fromRGB(50,75,155); sbs.Thickness = 1
+    spawnBtn.MouseEnter:Connect(function() TweenService:Create(spawnBtn,TweenInfo.new(0.1),{BackgroundColor3=Color3.fromRGB(38,58,110)}):Play() end)
+    spawnBtn.MouseLeave:Connect(function() TweenService:Create(spawnBtn,TweenInfo.new(0.1),{BackgroundColor3=Color3.fromRGB(28,45,90)}):Play() end)
     spawnBtn.MouseButton1Click:Connect(function() spawnBall() end)
 
     -- Keybind row
-    local keybindRow = Instance.new("Frame")
-    keybindRow.Size = UDim2.new(1, 0, 0, 44)
-    keybindRow.BackgroundColor3 = ROW
-    keybindRow.BorderSizePixel = 0
-    keybindRow.LayoutOrder = order + 1
-    keybindRow.Parent = page
-    local krc = Instance.new("UICorner"); krc.CornerRadius = UDim.new(0, 7); krc.Parent = keybindRow
+    local krow = Instance.new("Frame", page)
+    krow.Size = UDim2.new(1,0,0,44); krow.BackgroundColor3 = C_ROW
+    krow.BorderSizePixel = 0; krow.LayoutOrder = order + 1
+    Instance.new("UICorner", krow).CornerRadius = UDim.new(0, 7)
 
-    local kLabel = Instance.new("TextLabel")
-    kLabel.Size = UDim2.new(0.5, 0, 1, 0)
-    kLabel.Position = UDim2.new(0, 14, 0, 0)
-    kLabel.BackgroundTransparency = 1
-    kLabel.Text = "Keybind"
-    kLabel.TextColor3 = TXT_MAIN
-    kLabel.TextSize = 13
-    kLabel.Font = Enum.Font.Gotham
-    kLabel.TextXAlignment = Enum.TextXAlignment.Left
-    kLabel.Parent = keybindRow
+    local kLbl = Instance.new("TextLabel", krow)
+    kLbl.Size = UDim2.new(0.4,0,1,0); kLbl.Position = UDim2.new(0,14,0,0)
+    kLbl.BackgroundTransparency = 1; kLbl.Text = "Keybind"
+    kLbl.TextColor3 = C_TXT; kLbl.TextSize = 13
+    kLbl.Font = Enum.Font.Gotham; kLbl.TextXAlignment = Enum.TextXAlignment.Left
 
-    -- keybind toggle
-    local keybindEnabled = false
-    local kToggleTrack = Instance.new("Frame")
-    kToggleTrack.Size = UDim2.new(0, 42, 0, 22)
-    kToggleTrack.Position = UDim2.new(1, -130, 0.5, -11)
-    kToggleTrack.BackgroundColor3 = Color3.fromRGB(52, 52, 60)
-    kToggleTrack.BorderSizePixel = 0
-    kToggleTrack.Parent = keybindRow
-    local kttc = Instance.new("UICorner"); kttc.CornerRadius = UDim.new(1, 0); kttc.Parent = kToggleTrack
+    -- toggle
+    local kEnabled = false
+    local kTrack = Instance.new("Frame", krow)
+    kTrack.Size = UDim2.new(0,42,0,22); kTrack.Position = UDim2.new(1,-122,0.5,-11)
+    kTrack.BackgroundColor3 = Color3.fromRGB(50,50,58); kTrack.BorderSizePixel = 0
+    Instance.new("UICorner", kTrack).CornerRadius = UDim.new(1,0)
 
-    local kToggleThumb = Instance.new("Frame")
-    kToggleThumb.Size = UDim2.new(0, 16, 0, 16)
-    kToggleThumb.Position = UDim2.new(0, 3, 0.5, -8)
-    kToggleThumb.BackgroundColor3 = Color3.fromRGB(145, 145, 155)
-    kToggleThumb.BorderSizePixel = 0
-    kToggleThumb.Parent = kToggleTrack
-    local ktthumbc = Instance.new("UICorner"); ktthumbc.CornerRadius = UDim.new(1, 0); ktthumbc.Parent = kToggleThumb
+    local kThumb = Instance.new("Frame", kTrack)
+    kThumb.Size = UDim2.new(0,16,0,16); kThumb.Position = UDim2.new(0,3,0.5,-8)
+    kThumb.BackgroundColor3 = Color3.fromRGB(140,140,150); kThumb.BorderSizePixel = 0
+    Instance.new("UICorner", kThumb).CornerRadius = UDim.new(1,0)
 
-    -- keybind button (shows current key)
-    local keyBtn = Instance.new("TextButton")
-    keyBtn.Size = UDim2.new(0, 60, 0, 26)
-    keyBtn.Position = UDim2.new(1, -68, 0.5, -13)
-    keyBtn.BackgroundColor3 = Color3.fromRGB(38, 38, 44)
-    keyBtn.BorderSizePixel = 0
-    keyBtn.Text = "None"
-    keyBtn.TextColor3 = TXT_DIM
-    keyBtn.TextSize = 11
-    keyBtn.Font = Enum.Font.GothamMedium
-    keyBtn.Parent = keybindRow
-    local kbc = Instance.new("UICorner"); kbc.CornerRadius = UDim.new(0, 5); kbc.Parent = keyBtn
-    local kbs = Instance.new("UIStroke"); kbs.Color = DIVIDER; kbs.Thickness = 1; kbs.Parent = keyBtn
+    -- key display button
+    local keyBtn = Instance.new("TextButton", krow)
+    keyBtn.Size = UDim2.new(0,58,0,26); keyBtn.Position = UDim2.new(1,-68,0.5,-13)
+    keyBtn.BackgroundColor3 = Color3.fromRGB(36,36,42); keyBtn.BorderSizePixel = 0
+    keyBtn.Text = "None"; keyBtn.TextColor3 = C_TXT_DIM
+    keyBtn.TextSize = 11; keyBtn.Font = Enum.Font.GothamMedium
+    keyBtn.AutoButtonColor = false
+    Instance.new("UICorner", keyBtn).CornerRadius = UDim.new(0, 5)
+    local kbs = Instance.new("UIStroke", keyBtn); kbs.Color = C_DIVIDER; kbs.Thickness = 1
 
-    -- toggle keybind on/off
-    local kToggleHitbox = Instance.new("TextButton")
-    kToggleHitbox.Size = UDim2.new(0, 52, 0, 30)
-    kToggleHitbox.Position = UDim2.new(1, -138, 0.5, -15)
-    kToggleHitbox.BackgroundTransparency = 1; kToggleHitbox.Text = ""; kToggleHitbox.BorderSizePixel = 0
-    kToggleHitbox.Parent = keybindRow
+    local kToggleHb = Instance.new("TextButton", krow)
+    kToggleHb.Size = UDim2.new(0,52,0,32); kToggleHb.Position = UDim2.new(1,-130,0.5,-16)
+    kToggleHb.BackgroundTransparency = 1; kToggleHb.Text = ""; kToggleHb.BorderSizePixel = 0
 
-    kToggleHitbox.MouseButton1Click:Connect(function()
-        keybindEnabled = not keybindEnabled
-        if keybindEnabled then
-            TweenService:Create(kToggleTrack, TweenInfo.new(0.15), {BackgroundColor3 = ACCENT}):Play()
-            TweenService:Create(kToggleThumb, TweenInfo.new(0.15), {Position = UDim2.new(0, 23, 0.5, -8), BackgroundColor3 = Color3.fromRGB(255, 255, 255)}):Play()
+    kToggleHb.MouseButton1Click:Connect(function()
+        kEnabled = not kEnabled
+        if kEnabled then
+            TweenService:Create(kTrack,TweenInfo.new(0.15),{BackgroundColor3=C_ACCENT}):Play()
+            TweenService:Create(kThumb,TweenInfo.new(0.15),{Position=UDim2.new(0,23,0.5,-8),BackgroundColor3=Color3.fromRGB(255,255,255)}):Play()
         else
-            TweenService:Create(kToggleTrack, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(52, 52, 60)}):Play()
-            TweenService:Create(kToggleThumb, TweenInfo.new(0.15), {Position = UDim2.new(0, 3, 0.5, -8), BackgroundColor3 = Color3.fromRGB(145, 145, 155)}):Play()
-            -- when disabled, clear keybind
-            spawnBallKeybind = nil
-            keyBtn.Text = "None"
-            keyBtn.TextColor3 = TXT_DIM
+            TweenService:Create(kTrack,TweenInfo.new(0.15),{BackgroundColor3=Color3.fromRGB(50,50,58)}):Play()
+            TweenService:Create(kThumb,TweenInfo.new(0.15),{Position=UDim2.new(0,3,0.5,-8),BackgroundColor3=Color3.fromRGB(140,140,150)}):Play()
+            spawnBallKeybind = nil; keyBtn.Text = "None"; keyBtn.TextColor3 = C_TXT_DIM; kbs.Color = C_DIVIDER
         end
     end)
 
-    -- click keyBtn to set keybind
     keyBtn.MouseButton1Click:Connect(function()
-        if not keybindEnabled then return end
+        if not kEnabled then return end
         bindingKeybind = true
-        keyBtn.Text = "..."
-        keyBtn.TextColor3 = Color3.fromRGB(255, 210, 80)
-        kbs.Color = Color3.fromRGB(160, 130, 40)
-
+        keyBtn.Text = "..."; keyBtn.TextColor3 = Color3.fromRGB(255,210,70); kbs.Color = Color3.fromRGB(160,130,40)
         local conn
         conn = UserInputService.InputBegan:Connect(function(input, gpe)
             if input.UserInputType == Enum.UserInputType.Keyboard then
-                -- ignore RightShift (reserved)
                 if input.KeyCode == Enum.KeyCode.RightShift then return end
                 spawnBallKeybind = input.KeyCode
-                keyBtn.Text = tostring(input.KeyCode):gsub("Enum.KeyCode.", "")
-                keyBtn.TextColor3 = TXT_ACCENT
-                kbs.Color = ACCENT
+                local kname = tostring(input.KeyCode):gsub("Enum%.KeyCode%.", "")
+                keyBtn.Text = kname; keyBtn.TextColor3 = C_ACCENT_TXT; kbs.Color = C_ACCENT
                 bindingKeybind = false
                 conn:Disconnect()
             end
@@ -818,50 +689,31 @@ local ballPage   = addPage("Ball",   1)
 local miscPage   = addPage("Misc",   2)
 local configPage = addPage("Config", 3)
 
--- =====================
--- PLAYER PAGE
--- =====================
+-- PLAYER
 addSection(playerPage, "Position", 0)
 addXYZDisplay(playerPage, 1)
 
 addSection(playerPage, "Movement", 2)
-
 addToggle(playerPage, "Speed Boost", 3, function(state)
     speedEnabled = state
     if state then startSpeed() else stopSpeed() end
 end)
-
-addSlider(playerPage, "Speed Multiplier", 1.0, 2.0, 1.2, 0.1, 4, function(val)
-    speedMultiplier = val
-end)
+addSlider(playerPage, "Speed Multiplier", 1.0, 2.0, 1.2, 0.1, 4, function(val) speedMultiplier = val end)
 
 addSection(playerPage, "Reach", 5)
-
-local reachBtn = addButton(playerPage, "Reach Hitbox:  OFF", 6, function()
-    reachBoxEnabled = not reachBoxEnabled
-    if reachBoxEnabled then
-        createReachBox(ReachModule.distance)
-    else
-        removeReachBox()
-    end
-end)
-
+local reachBtn = addButton(playerPage, "Reach Hitbox:  OFF", 6, nil)
 reachBtn.MouseButton1Click:Connect(function()
+    reachBoxEnabled = not reachBoxEnabled
+    if reachBoxEnabled then createReachBox(ReachModule.distance) else removeReachBox() end
     reachBtn.Text = reachBoxEnabled and "Reach Hitbox:  ON" or "Reach Hitbox:  OFF"
 end)
-
 addSlider(playerPage, "Reach Size", 1, 50, 5, 1, 7, function(val)
-    ReachModule:SetDistance(val)
-    updateReachBoxSize(val)
+    ReachModule:SetDistance(val); updateReachBoxSize(val)
 end)
 
--- =====================
--- BALL PAGE
--- =====================
+-- BALL
 addSection(ballPage, "Ball", 0)
 addSpawnBallWidget(ballPage, 1)
 
--- =====================
--- DEFAULT PAGE
--- =====================
+-- ACTIVATE
 setPage("Player")
