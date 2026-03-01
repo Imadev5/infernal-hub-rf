@@ -1,4 +1,4 @@
-local Players = game:GetService("Players")
+ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
@@ -57,14 +57,6 @@ local function fireTouch(ball, limb)
     if not ball or not ball.Parent then return end
     firetouchinterest(ball, limb, 0)
     task.wait(0.03)
-    firetouchinterest(ball, limb, 1)
-end
-
-local function fireTouchInstant(ball, limb)
-    if not firetouchinterest then return end
-    if not ball or not ball.Parent then return end
-    if not limb or not limb.Parent then return end
-    firetouchinterest(ball, limb, 0)
     firetouchinterest(ball, limb, 1)
 end
 
@@ -214,9 +206,9 @@ local function startBreakReact()
         if not breakReactOn then return end
         local char = LocalPlayer.Character
         local root = char and char:FindFirstChild("HumanoidRootPart")
-        if not char or not root then return end
+        if not root then return end
         local now = tick()
-        if now - brLastUpdate > 0.5 or char ~= brLastChar then
+        if now - brLastUpdate > 1 or char ~= brLastChar then
             brBallCache = refreshBallCache()
             brLimbCache = {}
             for _, part in ipairs(char:GetChildren()) do
@@ -230,7 +222,7 @@ local function startBreakReact()
         for _, ball in ipairs(brBallCache) do
             if ball and ball.Parent then
                 for _, limb in ipairs(brLimbCache) do
-                    fireTouchInstant(ball, limb)
+                    task.spawn(fireTouch, ball, limb)
                 end
                 pcall(function()
                     ball.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
