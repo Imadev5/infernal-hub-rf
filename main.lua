@@ -35,6 +35,7 @@ local reachBoxConn = nil
 local breakReactOn = false
 local breakReactConn = nil
 local allConnections = {}
+local activeSlider = nil
 
 local function trackConn(conn)
     if conn then table.insert(allConnections, conn) end
@@ -57,6 +58,14 @@ local function fireTouch(ball, limb)
     if not ball or not ball.Parent then return end
     firetouchinterest(ball, limb, 0)
     task.wait(0.03)
+    firetouchinterest(ball, limb, 1)
+end
+
+local function fireTouchInstant(ball, limb)
+    if not firetouchinterest then return end
+    if not ball or not ball.Parent then return end
+    if not limb or not limb.Parent then return end
+    firetouchinterest(ball, limb, 0)
     firetouchinterest(ball, limb, 1)
 end
 
@@ -199,6 +208,7 @@ local brBallCache = {}
 local brLimbCache = {}
 local brLastUpdate = 0
 local brLastChar = nil
+local brFrame = 0
 
 local function startBreakReact()
     if breakReactConn then return end
@@ -206,23 +216,26 @@ local function startBreakReact()
         if not breakReactOn then return end
         local char = LocalPlayer.Character
         local root = char and char:FindFirstChild("HumanoidRootPart")
-        if not root then return end
-        local now = tick()
-        if now - brLastUpdate > 1 or char ~= brLastChar then
-            brBallCache = refreshBallCache()
-            brLimbCache = {}
-            for _, part in ipairs(char:GetChildren()) do
-                if part:IsA("BasePart") then
-                    table.insert(brLimbCache, part)
+        if not char or not root then return end
+        brFrame = brFrame + 1
+        if brFrame % 3 == 0 or brFrame <= 1 then
+            local now = tick()
+            if now - brLastUpdate > 1 or char ~= brLastChar then
+                brBallCache = refreshBallCache()
+                brLimbCache = {}
+                for _, part in ipairs(char:GetChildren()) do
+                    if part:IsA("BasePart") then
+                        table.insert(brLimbCache, part)
+                    end
                 end
+                brLastUpdate = now
+                brLastChar = char
             end
-            brLastUpdate = now
-            brLastChar = char
         end
         for _, ball in ipairs(brBallCache) do
             if ball and ball.Parent then
                 for _, limb in ipairs(brLimbCache) do
-                    task.spawn(fireTouch, ball, limb)
+                    fireTouchInstant(ball, limb)
                 end
                 pcall(function()
                     ball.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
@@ -240,6 +253,7 @@ local function stopBreakReact()
     brLimbCache = {}
     brLastUpdate = 0
     brLastChar = nil
+    brFrame = 0
 end
 
 local function hookStamina()
@@ -551,6 +565,18 @@ trackConn(UserInputService.InputBegan:Connect(function(input, gpe)
     end
 end))
 
+trackConn(UserInputService.InputChanged:Connect(function(i)
+    if activeSlider and (i.UserInputType == Enum.UserInputType.MouseMovement or i.UserInputType == Enum.UserInputType.Touch) then
+        activeSlider(i.Position.X)
+    end
+end))
+
+trackConn(UserInputService.InputEnded:Connect(function(i)
+    if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
+        activeSlider = nil
+    end
+end))
+
 local tabs = {"Player", "Ball"}
 local currentTab = ""
 local tabBtns = {}
@@ -717,7 +743,6 @@ local function makeSlider(par, name, ord, lo, hi, def, cb)
     kn.BorderSizePixel = 0
     kn.Parent = bg
     Instance.new("UICorner", kn).CornerRadius = UDim.new(1, 0)
-    local drag = false
     local function upd(px)
         if bg.AbsoluteSize.X == 0 then return end
         local p = math.clamp((px - bg.AbsolutePosition.X) / bg.AbsoluteSize.X, 0, 1)
@@ -736,30 +761,17 @@ local function makeSlider(par, name, ord, lo, hi, def, cb)
     hit.Parent = f
     hit.InputBegan:Connect(function(i)
         if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
-            drag = true
+            activeSlider = upd
             upd(i.Position.X)
-            TweenService:Create(kn, TweenInfo.new(0.1), {Size = UDim2.new(0, 14, 0, 14), Position = UDim2.new(kn.Position.X.Scale, -7, 0.5, -7)}):Play()
+            TweenService:Create(kn, TweenInfo.new(0.1), {Size = UDim2.new(0, 14, 0, 14)}):Play()
         end
     end)
     hit.InputEnded:Connect(function(i)
         if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
-            drag = false
+            if activeSlider == upd then activeSlider = nil end
             TweenService:Create(kn, TweenInfo.new(0.1), {Size = UDim2.new(0, 10, 0, 10)}):Play()
         end
     end)
-    trackConn(UserInputService.InputChanged:Connect(function(i)
-        if drag and (i.UserInputType == Enum.UserInputType.MouseMovement or i.UserInputType == Enum.UserInputType.Touch) then
-            upd(i.Position.X)
-        end
-    end))
-    trackConn(UserInputService.InputEnded:Connect(function(i)
-        if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
-            if drag then
-                drag = false
-                TweenService:Create(kn, TweenInfo.new(0.1), {Size = UDim2.new(0, 10, 0, 10)}):Play()
-            end
-        end
-    end))
     return f
 end
 
