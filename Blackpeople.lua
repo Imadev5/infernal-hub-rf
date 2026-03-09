@@ -1,4 +1,4 @@
- local L_0=game:GetService("Players")
+local L_0=game:GetService("Players")
 local L_1=game:GetService("RunService")
 local L_2=game:GetService("TweenService")
 local L_3=game:GetService("UserInputService")
@@ -59,7 +59,12 @@ L_31(L_3.InputEnded:Connect(function(L_inp)
         if L_m1Held then
             L_m1Held=false
             if L_15 then
-                task.spawn(L_138)
+                task.spawn(function()
+                    for L_i=1,4 do
+                        task.spawn(L_138)
+                        task.wait(0.05)
+                    end
+                end)
             end
         end
     end
@@ -211,3 +216,4 @@ local function L_201()for _,L_289 in ipairs(L_29)do pcall(function()L_289:Discon
 L_180.MouseButton1Click:Connect(function()L_175.Visible=false end)
 L_179.MouseButton1Click:Connect(function()L_2:Create(L_175,TweenInfo.new(0.13,Enum.EasingStyle.Quad,Enum.EasingDirection.In),{Size=UDim2.new(0,L_cW,0,0)}):Play()task.delay(0.18,function()L_201()pcall(function()L_156:Destroy()end)end)end)
 L_175.Size=UDim2.new(0,L_cW,0,0)L_175.BackgroundTransparency=1;L_2:Create(L_175,TweenInfo.new(0.28,Enum.EasingStyle.Quint,Enum.EasingDirection.Out),{Size=UDim2.new(0,L_cW,0,L_cH),BackgroundTransparency=0}):Play()
+ 
