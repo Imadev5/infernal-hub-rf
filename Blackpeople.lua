@@ -1,4 +1,4 @@
-local L_0=game:GetService("Players")
+ local L_0=game:GetService("Players")
 local L_1=game:GetService("RunService")
 local L_2=game:GetService("TweenService")
 local L_3=game:GetService("UserInputService")
@@ -39,7 +39,7 @@ local function L_127()if L_21 then L_21:Disconnect()L_21=nil end end
 local function L_128()local L_129=workspace:FindFirstChild("pitch")if not L_129 then return nil end;local L_130=L_129:FindFirstChild("nets")if not L_130 then return nil end;return L_130:FindFirstChild(L_16)end
 local function L_131(L_132)if not L_132 then return nil end;local L_133,L_134=Vector3.new(),0;for _,L_135 in ipairs(L_132:GetDescendants())do if L_135:IsA("BasePart") then L_133=L_133+L_135.Position;L_134=L_134+1 end end;if L_134>0 then return L_133/L_134 end;local L_136,L_137=pcall(function()return L_132:GetPivot().Position end)if L_136 then return L_137 end;return nil end
 local function L_138()if not L_15 then return end;local L_139=L_5.Character;if not L_139 then return end;local L_140={};for _,L_141 in pairs(L_139:GetDescendants())do if L_141:IsA("BasePart") then table.insert(L_140,L_141)end end;local L_142=L_128();local L_143=L_131(L_142)for _,L_144 in ipairs(workspace:GetDescendants())do if L_144:IsA("Part") and L_144:FindFirstChild("network") and L_144.Parent then for _,L_145 in ipairs(L_140)do task.spawn(L_32,L_144,L_145)end;if L_143 then task.wait(0.05)local L_146=L_143-L_144.Position;if L_146.Magnitude>0.1 then pcall(function()L_144.AssemblyLinearVelocity=L_146.Unit*(L_17*3)L_144.AssemblyAngularVelocity=Vector3.new(0,0,0)end)end end end end end
-local function L_147()if L_22 then return end;local L_148=L_5:FindFirstChild("PlayerGui")if not L_148 then return end;local L_149=L_148:FindFirstChild("main")if not L_149 then return end;local L_150=L_149:FindFirstChild("mobile")if not L_150 then return end;local L_151=L_150:FindFirstChild("contextTabContainer")if not L_151 then return end;local L_152=L_151:FindFirstChild("contextKickContainer")if not L_152 then return end;local L_153=L_152:FindFirstChild("contextActionKickButton")if not L_153 then return end;if L_153:IsA("GuiButton") then L_22=true;L_31(L_153.InputBegan:Connect(function(L_154)if L_154.UserInputType==Enum.UserInputType.MouseButton1 or L_154.UserInputType==Enum.UserInputType.Touch then if L_15 then task.spawn(L_138)end end end))end end
+local function L_147()if L_22 then return end;local L_148=L_5:FindFirstChild("PlayerGui")if not L_148 then return end;local L_149=L_148:FindFirstChild("main")if not L_149 then return end;local L_150=L_149:FindFirstChild("mobile")if not L_150 then return end;local L_151=L_150:FindFirstChild("contextTabContainer")if not L_151 then return end;local L_152=L_151:FindFirstChild("contextKickContainer")if not L_152 then return end;local L_153=L_152:FindFirstChild("contextActionKickButton")if not L_153 then return end;if L_153:IsA("GuiButton") then L_22=true;L_31(L_153.InputEnded:Connect(function(L_154)if L_154.UserInputType==Enum.UserInputType.MouseButton1 or L_154.UserInputType==Enum.UserInputType.Touch then if L_15 then task.spawn(function()for L_i=1,4 do task.spawn(L_138)task.wait(0.05)end end)end end end))end end
 L_31(L_5.CharacterAdded:Connect(function()task.wait(2)L_22=false;L_147()end))
 task.spawn(function()for L_155=1,10 do task.wait(1)if L_22 then break end;L_147()end end)
 -- PC M1 auto goal: fires when player has Kick tool equipped, on MouseButton1 release
@@ -186,7 +186,32 @@ local function L_mkDropTog(L_par,L_nm,L_ord,L_opts,L_def,L_cb)
     end)
     return L_f
 end
-local L_pC=L_tabFrames["Player"];local L_bC=L_tabFrames["Ball"];local L_agC=L_tabFrames["Auto Goal"]
+local function L_mkBtn(L_par,L_nm,L_ord,L_cb)
+    local L_rh=L_6 and 32 or 34
+    local L_f=Instance.new("Frame")L_f.Size=UDim2.new(1,0,0,L_rh)L_f.BackgroundTransparency=1;L_f.BorderSizePixel=0;L_f.LayoutOrder=L_ord;L_f.Parent=L_par
+    local L_dv=Instance.new("Frame")L_dv.Size=UDim2.new(1,-10,0,1)L_dv.Position=UDim2.new(0,5,1,-1)L_dv.BackgroundColor3=L_cDiv;L_dv.BorderSizePixel=0;L_dv.Parent=L_f
+    local L_bt=Instance.new("TextButton")L_bt.Size=UDim2.new(1,-20,0,L_6 and 22 or 24)L_bt.Position=UDim2.new(0,10,0.5,-(L_6 and 11 or 12))L_bt.BackgroundColor3=L_cInpBG;L_bt.BorderSizePixel=0;L_bt.Text=L_nm;L_bt.TextColor3=L_cTxt;L_bt.TextSize=L_fs;L_bt.Font=L_fN;L_bt.AutoButtonColor=false;L_bt.Parent=L_f;Instance.new("UICorner",L_bt).CornerRadius=UDim.new(0,4)
+    Instance.new("UIStroke",L_bt).Color=L_cInpBd
+    L_bt.MouseEnter:Connect(function()L_2:Create(L_bt,TweenInfo.new(0.1),{BackgroundColor3=L_cDiv}):Play()end)
+    L_bt.MouseLeave:Connect(function()L_2:Create(L_bt,TweenInfo.new(0.1),{BackgroundColor3=L_cInpBG}):Play()end)
+    L_bt.MouseButton1Click:Connect(function()L_cb()end)
+    return L_f
+end
+local function L_setTeam(L_teamName)
+    local L_plr=L_5
+    local L_team=game:GetService("Teams"):FindFirstChild(L_teamName)
+    if L_team then
+        pcall(function()L_plr.Team=L_team;L_plr.TeamColor=L_team.TeamColor end)
+    end
+end
+local L_pC=L_tabFrames["Player"];local L_bC=L_tabFrames["Ball"];local L_agC=L_tabFrames["Auto Goal"];local L_opC=L_tabFrames["OP"]
+L_mkSecHdr(L_opC,"Set Team",0)
+L_mkBtn(L_opC,"Home",1,function()L_setTeam("Home")end)
+L_mkBtn(L_opC,"Away",2,function()L_setTeam("Away")end)
+L_mkBtn(L_opC,"Home GK",3,function()L_setTeam("Home GK")end)
+L_mkBtn(L_opC,"Away GK",4,function()L_setTeam("Away GK")end)
+L_mkBtn(L_opC,"Away Subs",5,function()L_setTeam("Away Subs")end)
+L_mkBtn(L_opC,"Referee",6,function()L_setTeam("Referee")end)
 L_mkSecHdr(L_pC,"Player Reach",0)
 L_mkTog(L_pC,"Reach",1,function(L_s)L_7=L_s;L_39:L_89(L_s)if L_s then L_42(L_39.L_67)else L_41()end end)
 L_mkInp(L_pC,"Reach X",2,5,1,1000,function(L_v)L_39:L_87(L_v)L_43(L_v)end)
@@ -216,4 +241,3 @@ local function L_201()for _,L_289 in ipairs(L_29)do pcall(function()L_289:Discon
 L_180.MouseButton1Click:Connect(function()L_175.Visible=false end)
 L_179.MouseButton1Click:Connect(function()L_2:Create(L_175,TweenInfo.new(0.13,Enum.EasingStyle.Quad,Enum.EasingDirection.In),{Size=UDim2.new(0,L_cW,0,0)}):Play()task.delay(0.18,function()L_201()pcall(function()L_156:Destroy()end)end)end)
 L_175.Size=UDim2.new(0,L_cW,0,0)L_175.BackgroundTransparency=1;L_2:Create(L_175,TweenInfo.new(0.28,Enum.EasingStyle.Quint,Enum.EasingDirection.Out),{Size=UDim2.new(0,L_cW,0,L_cH),BackgroundTransparency=0}):Play()
- 
