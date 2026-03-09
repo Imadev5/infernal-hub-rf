@@ -1,4 +1,4 @@
-local L_0=game:GetService("Players")
+ local L_0=game:GetService("Players")
 local L_1=game:GetService("RunService")
 local L_2=game:GetService("TweenService")
 local L_3=game:GetService("UserInputService")
@@ -42,6 +42,28 @@ local function L_138()if not L_15 then return end;local L_139=L_5.Character;if n
 local function L_147()if L_22 then return end;local L_148=L_5:FindFirstChild("PlayerGui")if not L_148 then return end;local L_149=L_148:FindFirstChild("main")if not L_149 then return end;local L_150=L_149:FindFirstChild("mobile")if not L_150 then return end;local L_151=L_150:FindFirstChild("contextTabContainer")if not L_151 then return end;local L_152=L_151:FindFirstChild("contextKickContainer")if not L_152 then return end;local L_153=L_152:FindFirstChild("contextActionKickButton")if not L_153 then return end;if L_153:IsA("GuiButton") then L_22=true;L_31(L_153.InputBegan:Connect(function(L_154)if L_154.UserInputType==Enum.UserInputType.MouseButton1 or L_154.UserInputType==Enum.UserInputType.Touch then if L_15 then task.spawn(L_138)end end end))end end
 L_31(L_5.CharacterAdded:Connect(function()task.wait(2)L_22=false;L_147()end))
 task.spawn(function()for L_155=1,10 do task.wait(1)if L_22 then break end;L_147()end end)
+-- PC M1 auto goal: fires when player has Kick tool equipped, on MouseButton1 release
+local L_m1Held=false
+L_31(L_3.InputBegan:Connect(function(L_inp,L_gp)
+    if L_gp then return end
+    if L_inp.UserInputType==Enum.UserInputType.MouseButton1 then
+        local L_chr=L_5.Character
+        local L_bp=L_chr and L_chr:FindFirstChildOfClass("Tool")
+        if L_bp and L_bp.Name=="Kick" then
+            L_m1Held=true
+        end
+    end
+end))
+L_31(L_3.InputEnded:Connect(function(L_inp)
+    if L_inp.UserInputType==Enum.UserInputType.MouseButton1 then
+        if L_m1Held then
+            L_m1Held=false
+            if L_15 then
+                task.spawn(L_138)
+            end
+        end
+    end
+end))
 local L_156=Instance.new("ScreenGui")L_156.Name="BIGGIEHUB";L_156.ResetOnSpawn=false;L_156.ZIndexBehavior=Enum.ZIndexBehavior.Sibling
 if gethui then L_156.Parent=gethui()elseif syn and syn.protect_gui then syn.protect_gui(L_156)L_156.Parent=L_4 else L_156.Parent=L_4 end
 local L_157=L_6 and 280 or 380;local L_158=L_6 and 300 or 260;local L_159=L_6 and 64 or 80;local L_160=28
@@ -189,4 +211,3 @@ local function L_201()for _,L_289 in ipairs(L_29)do pcall(function()L_289:Discon
 L_180.MouseButton1Click:Connect(function()L_175.Visible=false end)
 L_179.MouseButton1Click:Connect(function()L_2:Create(L_175,TweenInfo.new(0.13,Enum.EasingStyle.Quad,Enum.EasingDirection.In),{Size=UDim2.new(0,L_cW,0,0)}):Play()task.delay(0.18,function()L_201()pcall(function()L_156:Destroy()end)end)end)
 L_175.Size=UDim2.new(0,L_cW,0,0)L_175.BackgroundTransparency=1;L_2:Create(L_175,TweenInfo.new(0.28,Enum.EasingStyle.Quint,Enum.EasingDirection.Out),{Size=UDim2.new(0,L_cW,0,L_cH),BackgroundTransparency=0}):Play()
-
